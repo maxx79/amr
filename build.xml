@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<project name="amr" basedir="." default="build">
+	<dirname property="prj_root" file="${ant.file}"/>
+        <property name="root" value="${prj_root}/../.."/>
+	<property file="local.properties"/>
+	<property name = "compiler.source" value="1.6"/>
+        <property name = "compiler.verbose" value="false"/>
+        <property name = "compiler.encoding" value="utf-8"/>
+        <property name = "compiler.target" value="1.6"/>
+        <property name = "compiler.debuglevel" value="source,lines,vars"/>
+        <property name = "compiler.debug" value="on"/>
+        <property name = "compiler.compiler" value="javac1.6"/>
+        <property name="distrib_filename" value="amr"/>
+	<condition property="doc_dir" value="${prj_root}/doc">
+    		<not>
+			<isset property="doc_dir"/>				
+      		</not>
+	</condition>
+        <condition property="distrib_dir" value="${prj_root}/distrib">
+    		<not>
+			<isset property="distrib_dir"/>				
+      		</not>
+	</condition>
+        <condition property="source_dir" value="${prj_root}/src/main/java">
+    		<not>
+			<isset property="source_dir"/>				
+      		</not>
+	</condition>
+	<condition property="res_dir" value="${prj_root}/res">
+    		<not>
+			<isset property="res_dir"/>				
+      		</not>
+	</condition>
+        <target name="init">
+	        <echo>Инициализация всех внутренних параметров</echo>
+                <property name="lib_dir" value="${prj_root}/lib"/>
+                <property name="common_source_dir" value="${common_dir}/src/main/java"/>
+                <property name="temp_dir" value="${distrib_dir}/temp"/>
+		<property name="classes_dir" value="${temp_dir}/classes"/>
+		<path id="lib.classpath">
+			<fileset dir="${lib_dir}">
+            			 <include name="**/*.jar"/>
+        		</fileset>
+		</path>
+	</target>
+        <!-- Удаляем все "ненужные" дириктории, приводя к первоначальному виду -->
+        <target name="clean" depends="init">
+		<echo>Удаляем все содержимое из каталогов ${temp_dir}, ${distrib_dir}</echo>
+		<delete dir="${temp_dir}" verbose="${verbose}"/>
+                <delete dir="${doc_dir}" verbose="${verbose}"/>
+		<delete dir="${distrib_dir}" verbose="${verbose}"/>
+	</target>
+        <target name="build" depends="init">
+                <antcall target="compile"/>
+		<antcall target="generate_headers"/>
+		<antcall target="package"/>
+<!--
+                <antcall target="refine"/>
+                <antcall target="obfuscate"/>
+-->
+                <echo>Удаляем временную директорию ${temp_dir}</echo>
+                <delete dir="${temp_dir}" verbose="${verbose}" failonerror="false"/>
+
+        </target>
+        <target name="compile" depends="init,clean">
+        	<echo>Начало компиляции в ${source_dir}</echo>
+        	<echo>Создаем директорию ${temp_dir}</echo>
+                <mkdir dir="${temp_dir}"/>
+		<mkdir dir="${classes_dir}"/>
+        	<javac destdir="${classes_dir}" verbose="${compiler.verbose}"
+	               encoding="${compiler.encoding}" classpathref="lib.classpath"
+                       source="${compiler.source}" target="${compiler.target}"
+                       compiler="${compiler.compiler}" debug ="${compiler.debug}"		>
+		
+		 	<src path="${source_dir}"/>
+		 	<include name="**/*.java"/> 
+		</javac>
+	<copy todir="${classes_dir}">
+		<fileset dir="${res_dir}">
+			<include name="**\*.properties"/>
+		</fileset>
+	</copy>
+
+	</target>
+        <target name="package">
+		<!-- Создаем jar файл -->
+        	<echo>Создаем директорию ${distrib_dir}</echo>
+        	<mkdir dir="${distrib_dir}"/>
+		<mkdir dir="${classes_dir}/libs"/>
+		<copy todir="${classes_dir}/libs">
+			<fileset dir="${res_dir}/libs/windows">
+			    <include name="libamr*.dll"/>
+			</fileset>
+			<fileset dir="${res_dir}/libs/linux">
+			    <include name="libamr*.so"/>
+			</fileset>
+			<fileset dir="${res_dir}/libs/mac">
+			    <include name="libamr*.dylib"/>
+			</fileset>
+			
+		</copy>
+        	<echo>Пакуем файл: linux_${distrib_filename}32.jar</echo>
+        	<jar jarfile="${distrib_dir}/${distrib_filename}.jar"
+		    manifest="${res_dir}/MANIFEST.MF"
+                >            
+			<fileset dir="${classes_dir}">
+			</fileset>
+		</jar>
+		<delete file="${classes_dir}/libs/libamr.so"/>
+	</target>
+	<target name="doc" depends="init">
+	    <echo>Java doc is generating</echo>
+	    <mkdir dir="${doc_dir}"/>
+	    <javadoc destdir="${doc_dir}" classpathref="lib.classpath">
+		 <fileset dir="${source_dir}">
+		    <include name="**/*.java"/>
+		 </fileset>
+	    </javadoc>
+	</target>
+	<target name="generate_headers" depends="init">
+	    <echo>Generating C headers</echo>
+	    <javah destdir="${prj_root}/src/main/C"
+		    classpath="${classes_dir}">
+		    <class name="ru.maximgorin.media.amr.NbDecoder"/>
+		    <class name="ru.maximgorin.media.amr.WbDecoder"/>
+		    <class name="ru.maximgorin.media.amr.NbEncoder"/>
+	    </javah>
+	</target>
+</project>
